@@ -11,7 +11,9 @@
 #include <pspuser.h>
 #include <pspgu.h>
 #include <pspctrl.h>
-
+/***************************************************************************
+* 定義
+***************************************************************************/
 #define WIDE 480
 #define VERTICAL 272
 
@@ -19,6 +21,10 @@
 #define MAZE_COLUMN 5 //列数
 #define FONTSIZE_ 12
 #define LEVEL 3
+
+/***************************************************************************
+* enum, typedef
+***************************************************************************/
 
 //迷路の一ブロック
 enum MazeKind {PATH, WALL, START, GOAL};    //ブロックの種類
@@ -50,6 +56,7 @@ int  main(int argc, char *argp[]);
 void action(int);
 void MazeMenu();
 int SelectLevel();
+void ShowFailed();
 
 /*****************************************************************************
 *  グローバル変数
@@ -68,7 +75,8 @@ PSP_MAIN_THREAD_STACK_SIZE_KB(512); // 新規追加
 *****************************************************************************/
 int main(int argc, char *argp[])
 {
-	DxLib_Init();
+	if(DxLib_Init() == -1)
+    ShowFailed();
 
   int level;
   int MHandle;
@@ -79,7 +87,7 @@ int main(int argc, char *argp[])
     SetCreateSoundDataType(DX_SOUNDDATATYPE_FILE);
 
     if((MHandle = LoadSoundMem("ms0:/PSP/GAME/maze/a.mp3")) == -1)
-      sceKernelExitGame();
+      ShowFailed();
     SetPanSoundMem(0, MHandle);
     PlaySoundMem(MHandle, DX_PLAYTYPE_LOOP, TRUE);
     MazeMenu();
@@ -87,7 +95,7 @@ int main(int argc, char *argp[])
     StopSoundMem(MHandle);
 
     if((SHandle = LoadSoundMem("ms0:/PSP/GAME/maze/b.mp3")) == -1)
-      sceKernelExitGame();
+      ShowFailed();
     SetPanSoundMem( 0, SHandle);
     PlaySoundMem(SHandle, DX_PLAYTYPE_LOOP, TRUE);
 		action(level);  // 初期化成功(正常時）の時だけ action()関数を実行
@@ -139,6 +147,15 @@ void PadWait()
 	do {
 		ProcessMessage();
 	} while(CheckHitKeyAll() == 0);
+}
+
+void ShowFailed()
+{
+  pspDebugScreenInit();
+	pspDebugScreenClear();
+	pspDebugScreenPrintf("Failed!\n");
+	sceKernelDelayThread(5*1000*1000);
+	sceKernelExitGame();
 }
 
 int SelectLevel()

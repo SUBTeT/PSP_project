@@ -1,5 +1,16 @@
 #include <dxlibp.h>
 #include "COLORS.H"
+#include <pspaudiocodec.h>
+#include <pspaudio.h>
+#include <psputility.h>
+#include <malloc.h>
+#include <string.h>
+#include <stdio.h>
+#include <pspkernel.h>
+#include <pspdisplay.h>
+#include <pspuser.h>
+#include <pspgu.h>
+#include <pspctrl.h>
 
 #define WIDE 480
 #define VERTICAL 272
@@ -37,7 +48,8 @@ int  initton(void);
 void ScreenSettings(void);
 int  main(int argc, char *argp[]);
 void action(int);
-int MazeMenu();
+void MazeMenu();
+int SelectLevel();
 
 /*****************************************************************************
 *  グローバル変数
@@ -46,7 +58,7 @@ int MazeMenu();
 /*****************************************************************************
 *  もじゅ〜る・いんふぉ  /  メインコードはユーザモード
 *****************************************************************************/
-PSP_MODULE_INFO("HINAGATA_DXP_02", PSP_MODULE_USER, 1, 0);
+PSP_MODULE_INFO("MAZE", PSP_MODULE_USER, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 PSP_HEAP_SIZE_KB(16*1024); // 新規追加
 PSP_MAIN_THREAD_STACK_SIZE_KB(512); // 新規追加
@@ -59,10 +71,27 @@ int main(int argc, char *argp[])
 	DxLib_Init();
 
   int level;
+  int MHandle;
+  int SHandle;
 
 	if(initton() == 0){
-    level = MazeMenu();
+    InitSoundMem();
+    SetCreateSoundDataType(DX_SOUNDDATATYPE_FILE);
+
+    if((MHandle = LoadSoundMem("ms0:/PSP/GAME/maze/a.mp3")) == -1)
+      sceKernelExitGame();
+    SetPanSoundMem(0, MHandle);
+    PlaySoundMem(MHandle, DX_PLAYTYPE_LOOP, TRUE);
+    MazeMenu();
+    level = SelectLevel();
+    StopSoundMem(MHandle);
+
+    if((SHandle = LoadSoundMem("ms0:/PSP/GAME/maze/b.mp3")) == -1)
+      sceKernelExitGame();
+    SetPanSoundMem( 0, SHandle);
+    PlaySoundMem(SHandle, DX_PLAYTYPE_LOOP, TRUE);
 		action(level);  // 初期化成功(正常時）の時だけ action()関数を実行
+    StopSoundMem(SHandle);
   }
 
 
@@ -112,24 +141,12 @@ void PadWait()
 	} while(CheckHitKeyAll() == 0);
 }
 
-int MazeMenu()
+int SelectLevel()
 {
-  int pad_states;
   int level;
+  int pad_states;
 
-  LoadGraphScreen(0, 0, "ms0:/PICTURE/menu.png", TRUE);
-  ScreenFlip();
-
-  while(1)
-  {
-    ProcessMessage();
-    pad_states = GetInputState();
-    if(pad_states == DXP_INPUT_START)
-      break;
-    if(pad_states == DXP_INPUT_SELECT)
-      sceKernelExitGame();
-  }
-  LoadGraphScreen(0, 0, "ms0:/PICTURE/select.png", TRUE);
+  LoadGraphScreen(0, 0, "ms0:/PSP/GAME/maze/select.png", TRUE);
   ScreenFlip();
   ClearDrawScreen();
 
@@ -149,6 +166,24 @@ int MazeMenu()
       level = level3;
       return level;
     }
+  }
+}
+
+void MazeMenu()
+{
+  int pad_states;
+
+  LoadGraphScreen(0, 0, "ms0:/PSP/GAME/maze/menu.png", TRUE);
+  ScreenFlip();
+
+  while(1)
+  {
+    ProcessMessage();
+    pad_states = GetInputState();
+    if(pad_states == DXP_INPUT_START)
+      break;
+    if(pad_states == DXP_INPUT_SELECT)
+      sceKernelExitGame();
   }
 }
 
@@ -272,7 +307,7 @@ void MazePlayerMove(int *playerRow, int *playerColumn, MazeBlock maze[MAZE_ROW][
 		}
 		break;
 
-		case DXP_INPUT_CROSS:
+		case DXP_INPUT_START:
 			sceKernelExitGame();
 	}
 }
@@ -324,6 +359,7 @@ void action(int level)
 {
 	//プレイヤー
 	MazePlayer player;
+  int start, end;
 
   //迷路
 	MazeBlock maze[LEVEL][MAZE_ROW][MAZE_COLUMN] =
@@ -358,6 +394,7 @@ void action(int level)
 		sceKernelExitGame();
 	}
 
+  start = GetNowCount();
 	while(MazeGoalCheck(player.row, player.column, maze[level]) != 1)
 	{
 		//迷路表示
@@ -372,8 +409,10 @@ void action(int level)
 
 	//迷路最終結果表示
 	ScreenFlip();
+  ClearDrawScreen();
+  end = GetNowCount() - start;
 	DrawBox(0, 0, WIDE, VERTICAL, BLACK, TRUE);
-	DrawFormatString(300, 250, WHITE, "ゴールです。");
+	DrawFormatString(150, 250, WHITE, "ゴールです! %f[s]かかりました。", (float)end / 1000);
 	MazeDraw(player.row, player.column, maze[level]);
 
 }

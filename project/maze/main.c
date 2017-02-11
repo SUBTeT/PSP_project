@@ -57,11 +57,12 @@ void action(int);
 void MazeMenu();
 int SelectLevel();
 void ShowFailed();
+void PadWait();
 
 /*****************************************************************************
 *  グローバル変数
 *****************************************************************************/
-
+int retry;
 /*****************************************************************************
 *  もじゅ〜る・いんふぉ  /  メインコードはユーザモード
 *****************************************************************************/
@@ -78,7 +79,7 @@ int main(int argc, char *argp[])
 	if(DxLib_Init() == -1)
     ShowFailed();
 
-  int level;
+  int level = 100;
   int MHandle;
   int SHandle;
 
@@ -89,9 +90,12 @@ int main(int argc, char *argp[])
     if((MHandle = LoadSoundMem("ms0:/PSP/GAME/maze/a.mp3")) == -1)
       ShowFailed();
     SetPanSoundMem(0, MHandle);
+loop:
     PlaySoundMem(MHandle, DX_PLAYTYPE_LOOP, TRUE);
-    MazeMenu();
-    level = SelectLevel();
+    do{
+      MazeMenu();
+      level = SelectLevel();
+    }while(level == 100);
     StopSoundMem(MHandle);
 
     if((SHandle = LoadSoundMem("ms0:/PSP/GAME/maze/b.mp3")) == -1)
@@ -100,9 +104,12 @@ int main(int argc, char *argp[])
     PlaySoundMem(SHandle, DX_PLAYTYPE_LOOP, TRUE);
 		action(level);  // 初期化成功(正常時）の時だけ action()関数を実行
     StopSoundMem(SHandle);
+    if(retry == DXP_INPUT_CIRCLE)
+      goto loop;
   }
 
-
+  DeleteSoundMem(MHandle);
+  DeleteSoundMem(SHandle);
 	DxLib_End();
 	return 0;
 }
@@ -140,7 +147,7 @@ int initton(void)
 }
 
 /*****************************************************************************
-*  アクション
+*  諸関数
 *****************************************************************************/
 void PadWait()
 {
@@ -171,17 +178,19 @@ int SelectLevel()
   {
     ProcessMessage();
     pad_states = GetInputState();
-    if(pad_states == DXP_INPUT_SQUARE){
-      level = level1;
-      return level;
-    }
-    if(pad_states == DXP_INPUT_TRIANGLE){
-      level = level2;
-      return level;
-    }
-    if(pad_states == DXP_INPUT_CIRCLE){
-      level = level3;
-      return level;
+    switch (pad_states) {
+      case DXP_INPUT_SQUARE:
+        level = level1;
+        return level;
+      case DXP_INPUT_TRIANGLE:
+        level = level2;
+        return level;
+      case DXP_INPUT_CIRCLE:
+        level = level3;
+        return level;
+      case DXP_INPUT_CROSS:
+        level = 100;
+        return level;
     }
   }
 }
@@ -372,6 +381,9 @@ void MazeDraw(int playerRow, int playerColumn, MazeBlock maze[MAZE_ROW][MAZE_COL
 	PadWait();
 }
 
+/*****************************************************************************
+*  アクション
+*****************************************************************************/
 void action(int level)
 {
 	//プレイヤー
@@ -431,5 +443,18 @@ void action(int level)
 	DrawBox(0, 0, WIDE, VERTICAL, BLACK, TRUE);
 	DrawFormatString(150, 250, WHITE, "ゴールです! %f[s]かかりました。", (float)end / 1000);
 	MazeDraw(player.row, player.column, maze[level]);
+
+  ClearDrawScreen();
+  DrawFormatString(0, 0, WHITE, "O or X");
+  ScreenFlip();
+  while(1)
+  {
+    ProcessMessage();
+    retry = GetInputState();
+    if(retry == DXP_INPUT_CROSS)
+      break;
+    if(retry == DXP_INPUT_CIRCLE)
+      break;
+  }
 
 }

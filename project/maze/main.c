@@ -1,3 +1,8 @@
+/****************************************************************************
+* Attention!
+* Please convert from shiftjis to UTF-8 FIRST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+****************************************************************************/
+
 #include <dxlibp.h>
 #include "COLORS.H"
 #include <pspaudiocodec.h>
@@ -64,6 +69,7 @@ void PadWait();
 *****************************************************************************/
 int retry;
 int deadend;
+int SHandle;
 /*****************************************************************************
 *  もじゅ?る・いんふぉ  /  メインコードはユーザモード
 *****************************************************************************/
@@ -82,7 +88,6 @@ int main(int argc, char *argp[])
 
   int level = 100;
   int MHandle;
-  int SHandle;
 
 	if(initton() == 0){
     InitSoundMem();
@@ -104,7 +109,6 @@ int main(int argc, char *argp[])
     SetPanSoundMem( 0, SHandle);
     PlaySoundMem(SHandle, DX_PLAYTYPE_LOOP, TRUE);
 		action(level);  // 初期化成功(正常時）の時だけ action()関数を実行
-    StopSoundMem(SHandle);
     if(retry == DXP_INPUT_LTRIGGER)
       goto loop;
   }
@@ -500,7 +504,8 @@ void action(int level)
 	MazeDraw(player.row, player.column, maze[level]);
 
   ClearDrawScreen();
-  DrawFormatString(0, 0, WHITE, "R or L"); //デバッグ用
+  StopSoundMem(SHandle);
+  LoadGraphScreen(0, 0, "ms0:/PSP/GAME/maze/continue.png", TRUE);
   ScreenFlip();
   while(1)
   {

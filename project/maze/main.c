@@ -28,6 +28,43 @@
 #define LEVEL 3
 
 /***************************************************************************
+* setiingup callback
+***************************************************************************/
+//    Exit callback  コールバックの終了
+int exitCallback(int arg1, int arg2, void *common)
+{
+    sceKernelExitGame();
+    return 0;
+}
+
+//     Callback thread  コールバックスレッド
+int callbackThread(SceSize args, void *argp)
+{
+    int cbid;
+
+    cbid = sceKernelCreateCallback("Exit Callback", (void*) exitCallback, NULL);
+    sceKernelRegisterExitCallback(cbid);
+
+    // ポーリング
+    sceKernelSleepThreadCB();
+
+    return 0;
+}
+
+//     コールバックスレッドの生成
+int setupCallbacks(void)
+{
+    int thid = 0;
+
+    thid = sceKernelCreateThread("update_thread", callbackThread, 0x11, 0xFA0, 0, 0);
+    if (thid >= 0)
+    {
+        sceKernelStartThread(thid, 0, 0);
+    }
+    return thid;
+}
+
+/***************************************************************************
 * enum, typedef
 ***************************************************************************/
 
@@ -86,6 +123,7 @@ int main(int argc, char *argp[])
 	if(DxLib_Init() == -1)
     ShowFailed();
 
+  setupCallbacks();
   int level = 100;
   int MHandle;
 
